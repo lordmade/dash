@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-touch-fullscreen" content="yes">
-  <title>Vynix - Teacher Dashboard</title>
+  <title>Vynix - Admin Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js"></script>
@@ -144,7 +144,45 @@
     .logout-btn:hover {
       color: var(--accent);
     }
+    .sidebar {
+      position: fixed;
+      left: 0;
+      top: 80px;
+      bottom: 0;
+      width: 280px;
+      background: var(--card-bg);
+      backdrop-filter: blur(20px);
+      border-right: 1px solid var(--border);
+      padding: 24px 0;
+      overflow-y: auto;
+      z-index: 900;
+      transition: transform 0.3s ease;
+    }
+    .sidebar ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .sidebar li {
+      margin: 0;
+    }
+    .sidebar a {
+      display: block;
+      padding: 16px 40px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      border-left: 3px solid transparent;
+    }
+    .sidebar a:hover,
+    .sidebar a.active {
+      color: var(--accent);
+      background: rgba(66, 153, 225, 0.1);
+      border-left-color: var(--accent);
+    }
     .main-content {
+      margin-left: 280px;
       margin-top: 80px;
       padding: 40px;
       min-height: calc(100vh - 80px);
@@ -219,10 +257,23 @@
       padding: 24px;
       box-shadow: var(--shadow-sm);
       transition: all 0.3s ease;
+      position: relative;
     }
     .user-card:hover {
       transform: translateY(-4px);
       box-shadow: var(--shadow-md);
+    }
+    .user-card.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+    }
+    .user-checkbox {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 20px;
+      height: 20px;
+      accent-color: var(--accent);
     }
     .user-avatar-small {
       width: 50px;
@@ -245,6 +296,110 @@
       font-size: 14px;
       color: var(--text-secondary);
       margin-bottom: 16px;
+    }
+    .assign-form {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .assign-form select,
+    .assign-form input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--card-bg);
+      color: var(--text-primary);
+    }
+    .assign-btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      flex-shrink: 0;
+    }
+    .assign-btn:hover:not(:disabled) {
+      background: var(--accent-secondary);
+    }
+    .assign-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .bulk-controls {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 24px;
+      display: none;
+    }
+    .bulk-controls.show {
+      display: block;
+    }
+    .bulk-controls .assign-form {
+      justify-content: space-between;
+      max-width: 600px;
+    }
+    .bulk-summary {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+    }
+    .select-all-btn {
+      background: var(--accent-secondary);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 16px;
+      transition: all 0.3s ease;
+    }
+    .select-all-btn:hover {
+      background: var(--accent);
+    }
+    .search-bar {
+      position: relative;
+      max-width: 400px;
+      margin-bottom: 24px;
+    }
+    .search-bar input {
+      width: 100%;
+      padding: 12px 16px 12px 40px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--card-bg);
+      color: var(--text-primary);
+      font-size: 16px;
+      transition: border-color 0.3s ease;
+    }
+    .search-bar input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .search-bar .material-icons {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-secondary);
+      font-size: 20px;
+    }
+    .analytics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 24px;
+    }
+    .analytics-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
     }
     .dark-toggle {
       background: none;
@@ -403,14 +558,20 @@
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
-    .search-bar {
-      position: relative;
-      max-width: 400px;
-      margin-bottom: 24px;
+    .form-group {
+      margin-bottom: 20px;
     }
-    .search-bar input {
+    .form-group label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--text-primary);
+    }
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
       width: 100%;
-      padding: 12px 16px 12px 40px;
+      padding: 12px 16px;
       border: 1px solid var(--border);
       border-radius: 12px;
       background: var(--card-bg);
@@ -418,17 +579,52 @@
       font-size: 16px;
       transition: border-color 0.3s ease;
     }
-    .search-bar input:focus {
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
       outline: none;
       border-color: var(--accent);
     }
-    .search-bar .material-icons {
-      position: absolute;
-      left: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--text-secondary);
-      font-size: 20px;
+    .form-group textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+    .save-btn {
+      background: var(--gradient);
+      color: white;
+      border: none;
+      padding: 12px 32px;
+      border-radius: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.3s ease;
+      width: 100%;
+    }
+    .save-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+    .profile-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 40px;
+      max-width: 600px;
+      margin: 0 auto;
+      box-shadow: var(--shadow-sm);
+    }
+    @media (max-width: 1024px) {
+      .sidebar {
+        transform: translateX(-100%);
+      }
+      .main-content {
+        margin-left: 0;
+      }
+      .sidebar.open {
+        transform: translateX(0);
+      }
     }
     @media (max-width: 768px) {
       .navbar { padding: 16px 20px; }
@@ -436,6 +632,8 @@
       .welcome-title { font-size: 36px; }
       .users-grid { grid-template-columns: 1fr; }
       .bottom-nav { display: block; }
+      .dialog { padding: 24px; }
+      .bulk-controls .assign-form { flex-direction: column; align-items: stretch; }
       .search-bar { max-width: 100%; }
     }
   </style>
@@ -449,49 +647,155 @@
   <nav class="navbar" id="navbar">
     <a class="logo" id="logo-link">
       <div class="logo-icon">V</div>
-      Vynix Teacher
+      Vynix Admin
     </a>
     <div class="user-menu">
-      <span id="user-name">Teacher</span>
-      <div class="user-avatar" id="user-avatar">T</div>
+      <span id="user-name">Admin</span>
+      <div class="user-avatar" id="user-avatar">A</div>
       <button class="dark-toggle" onclick="toggleDarkMode()" title="Toggle Dark Mode">🌙</button>
       <button class="logout-btn" onclick="logout()">Logout</button>
     </div>
   </nav>
 
+  <aside class="sidebar" id="sidebar">
+    <ul>
+      <li><a href="#" class="active" data-target="dashboard">Dashboard</a></li>
+      <li><a href="#users" data-target="users">Users</a></li>
+      <li><a href="#teachers" data-target="teachers">Teachers</a></li>
+      <li><a href="#courses" data-target="courses">Courses</a></li>
+      <li><a href="#analytics" data-target="analytics">Analytics</a></li>
+      <li><a href="#settings" data-target="settings">Settings</a></li>
+    </ul>
+  </aside>
+
   <main class="main-content">
     <section id="dashboard">
       <div class="welcome-section">
-        <h1 class="welcome-title">Teacher Dashboard</h1>
-        <p class="welcome-subtitle">Manage your assigned learners and track their progress.</p>
+        <h1 class="welcome-title">Admin Overview</h1>
+        <p class="welcome-subtitle">Manage your platform, monitor progress, and drive growth.</p>
       </div>
 
-      <div class="stats-grid">
+      <div class="stats-grid" id="admin-stats-grid">
         <div class="stat-card">
-          <div class="stat-number" id="assigned-learners-count">0</div>
-          <div class="stat-label">Assigned Learners</div>
+          <div class="stat-number" id="total-users">0</div>
+          <div class="stat-label">Total Users</div>
         </div>
         <div class="stat-card">
-          <div class="stat-number" id="active-learners">0</div>
-          <div class="stat-label">Active This Week</div>
+          <div class="stat-number" id="total-learners">0</div>
+          <div class="stat-label">Learners</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="total-teachers">0</div>
+          <div class="stat-label">Teachers</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="total-courses">0</div>
+          <div class="stat-label">Courses Created</div>
         </div>
       </div>
+    </section>
 
+    <section id="users" class="courses-section">
+      <h2 class="section-title">Manage Users</h2>
+      <div class="profile-card" style="margin-bottom: 24px;">
+        <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 20px; color: var(--text-primary);">Onboard New Learner</h3>
+        <form id="add-learner-form">
+          <div class="form-group">
+            <label for="new-learner-username">Username</label>
+            <input type="text" id="new-learner-username" placeholder="Enter username" required>
+          </div>
+          <div class="form-group">
+            <label for="new-learner-email">Email</label>
+            <input type="email" id="new-learner-email" placeholder="Enter email" required>
+          </div>
+          <div class="form-group">
+            <label for="new-learner-password">Temporary Password</label>
+            <input type="password" id="new-learner-password" placeholder="Enter or generate temp password" required>
+          </div>
+          <button type="submit" class="save-btn">Onboard New Learner</button>
+        </form>
+      </div>
       <div class="search-bar">
         <span class="material-icons">search</span>
-        <input type="text" id="learner-search" placeholder="Search assigned learners..." oninput="filterLearners()">
+        <input type="text" id="learner-search" placeholder="Search learners by name or email..." oninput="filterLearners()">
       </div>
+      <button class="select-all-btn" id="select-all-btn" onclick="toggleSelectAll()">Select All Learners</button>
+      <div class="bulk-controls" id="bulk-controls">
+        <div class="bulk-summary" id="bulk-summary"></div>
+        <form class="assign-form" id="bulk-assign-form">
+          <select id="bulk-teacher-select"></select>
+          <button type="submit" class="assign-btn">Bulk Assign</button>
+        </form>
+      </div>
+      <div class="users-grid" id="users-grid">
+        <!-- Users will be populated here -->
+      </div>
+    </section>
 
-      <h2 class="section-title">Assigned Learners</h2>
-      <div class="users-grid" id="assigned-learners-grid">
-        <!-- Assigned learners will be populated here -->
+    <section id="teachers" class="courses-section">
+      <h2 class="section-title">Manage Teachers</h2>
+      <div class="profile-card" style="margin-bottom: 24px;">
+        <form id="add-teacher-form">
+          <div class="form-group">
+            <label for="new-teacher-username">Username</label>
+            <input type="text" id="new-teacher-username" placeholder="Enter username" required>
+          </div>
+          <div class="form-group">
+            <label for="new-teacher-email">Email</label>
+            <input type="email" id="new-teacher-email" placeholder="Enter email" required>
+          </div>
+          <div class="form-group">
+            <label for="new-teacher-password">Temporary Password</label>
+            <input type="password" id="new-teacher-password" placeholder="Enter or generate temp password" required>
+          </div>
+          <button type="submit" class="save-btn">Onboard New Teacher</button>
+        </form>
+      </div>
+      <div class="users-grid" id="teachers-grid">
+        <!-- Teachers will be populated here -->
+      </div>
+    </section>
+
+    <section id="courses" class="courses-section">
+      <h2 class="section-title">Manage Courses</h2>
+      <div class="users-grid" id="courses-grid">
+        <!-- Courses will be populated here -->
+      </div>
+    </section>
+
+    <section id="analytics" class="courses-section">
+      <h2 class="section-title">Analytics</h2>
+      <div class="analytics-grid" id="analytics-grid">
+        <!-- Analytics cards will be populated here -->
+      </div>
+    </section>
+
+    <section id="settings" class="courses-section">
+      <h2 class="section-title">Admin Settings</h2>
+      <div class="profile-card">
+        <form id="admin-settings-form">
+          <div class="form-group">
+            <label for="platform-name">Platform Name</label>
+            <input type="text" id="platform-name" placeholder="Vynix Learning">
+          </div>
+          <div class="form-group">
+            <label for="support-email">Support Email</label>
+            <input type="email" id="support-email" placeholder="support@vynix.com">
+          </div>
+          <button type="submit" class="save-btn">Save Settings</button>
+        </form>
       </div>
     </section>
   </main>
 
   <nav class="bottom-nav">
     <ul>
-      <li><a href="#" class="active"><span class="material-icons">dashboard</span></a></li>
+      <li><a href="#" data-target="dashboard" class="active"><span class="material-icons">dashboard</span></a></li>
+      <li><a href="#users" data-target="users"><span class="material-icons">people</span></a></li>
+      <li><a href="#teachers" data-target="teachers"><span class="material-icons">school</span></a></li>
+      <li><a href="#courses" data-target="courses"><span class="material-icons">library_books</span></a></li>
+      <li><a href="#analytics" data-target="analytics"><span class="material-icons">bar_chart</span></a></li>
+      <li><a href="#settings" data-target="settings"><span class="material-icons">settings</span></a></li>
     </ul>
   </nav>
 
@@ -506,8 +810,8 @@
 
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
-    import { getAuth, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
-    import { getDatabase, ref, onValue } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
+    import { getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+    import { getDatabase, ref, onValue, set, update, push } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
 
     const firebaseConfig = {
       apiKey: "AIzaSyBOyZ3As4GTuNvjemvPF_SpsC6m6vqtNhc",
@@ -526,7 +830,11 @@
 
     let currentUser = null;
     let allUsers = {};
-    let searchQuery = '';
+    let allTeachers = {};
+    let allCourses = {};
+    let isInitialLoad = true;
+    let selectedLearners = new Set();
+    let searchQuery = '';  // NEW: For search filtering
 
     const loader = document.getElementById('loader-overlay');
 
@@ -562,10 +870,59 @@
       }
     });
 
-    // Filter learners based on search query
+    // Tab switching function
+    function showTab(targetId) {
+      document.querySelectorAll('section').forEach(section => {
+        section.style.display = 'none';
+      });
+      const targetSection = document.getElementById(targetId);
+      if (targetSection) {
+        targetSection.style.display = 'block';
+      }
+      if (targetId === 'users') {
+        updateBulkControls();
+      }
+    }
+
+    // Toggle all learners selection
+    window.toggleSelectAll = () => {
+      const learners = Object.entries(allUsers).filter(([uid, user]) => user.role === 'learner');
+      const totalLearners = learners.length;
+      if (selectedLearners.size === totalLearners) {
+        selectedLearners.clear();
+      } else {
+        learners.forEach(([uid]) => selectedLearners.add(uid));
+      }
+      updateBulkControls();
+      filterLearners();  // Repopulate to reflect selections
+    };
+
+    // Update bulk controls visibility and summary
+    function updateBulkControls() {
+      const bulkControls = document.getElementById('bulk-controls');
+      const summary = document.getElementById('bulk-summary');
+      const select = document.getElementById('bulk-teacher-select');
+      const btnText = document.getElementById('select-all-btn');
+
+      if (selectedLearners.size > 0) {
+        bulkControls.classList.add('show');
+        summary.textContent = `${selectedLearners.size} learner(s) selected`;
+        let teacherOptions = '<option value="">No Teacher</option>';
+        Object.entries(allTeachers).forEach(([tid, teacher]) => {
+          teacherOptions += `<option value="${tid}">${teacher.username || teacher.email}</option>`;
+        });
+        select.innerHTML = teacherOptions;
+        btnText.textContent = 'Deselect All';
+      } else {
+        bulkControls.classList.remove('show');
+        btnText.textContent = 'Select All Learners';
+      }
+    }
+
+    // NEW: Filter learners based on search query
     window.filterLearners = () => {
       searchQuery = document.getElementById('learner-search').value.toLowerCase();
-      populateAssignedLearners();
+      populateUsers();
     };
 
     // Dark mode toggle
@@ -592,6 +949,32 @@
       }
     });
 
+    // Sidebar toggle for mobile
+    const sidebar = document.getElementById('sidebar');
+    const logoLink = document.getElementById('logo-link');
+    logoLink.addEventListener('click', (e) => {
+      if (window.innerWidth <= 1024) {
+        e.preventDefault();
+        sidebar.classList.toggle('open');
+      }
+    });
+
+    // Navigation handling
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('a[data-target]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+          e.preventDefault();
+          const target = this.getAttribute('data-target');
+          showTab(target);
+          // Update active classes
+          document.querySelectorAll('a[data-target]').forEach(a => a.classList.remove('active'));
+          this.classList.add('active');
+        });
+      });
+      // Initialize dashboard
+      showTab('dashboard');
+    });
+
     // Logout
     window.logout = async () => {
       await signOut(auth);
@@ -611,56 +994,310 @@
       }
     }
 
-    // Update stats
-    function updateStats() {
-      const assignedLearners = Object.values(allUsers).filter(user => user.teacherId === currentUser.uid).length;
-      const activeLearners = Math.floor(assignedLearners * 0.7); // Placeholder for active count; in production, query last activity
-      document.getElementById('assigned-learners-count').textContent = assignedLearners;
-      document.getElementById('active-learners').textContent = activeLearners;
+    // Populate admin stats
+    function populateAdminStats() {
+      let totalUsers = 0;
+      let totalLearners = 0;
+      let totalTeachers = 0;
+      let totalCourses = Object.keys(allCourses).length;
+
+      Object.entries(allUsers).forEach(([uid, user]) => {
+        totalUsers++;
+        const role = user.role || 'learner';
+        if (role === 'learner') totalLearners++;
+        if (role === 'teacher') totalTeachers++;
+      });
+
+      document.getElementById('total-users').textContent = totalUsers;
+      document.getElementById('total-learners').textContent = totalLearners;
+      document.getElementById('total-teachers').textContent = totalTeachers;
+      document.getElementById('total-courses').textContent = totalCourses;
     }
 
-    // Populate assigned learners
-    function populateAssignedLearners() {
-      const grid = document.getElementById('assigned-learners-grid');
+    // UPDATED: Populate users grid - with search filtering
+    function populateUsers() {
+      const grid = document.getElementById('users-grid');
       grid.innerHTML = '';
-      let assignedLearners = Object.entries(allUsers).filter(([uid, user]) => {
-        if (user.teacherId !== currentUser.uid) return false;
+      let visibleLearners = Object.entries(allUsers).filter(([uid, user]) => {
+        const role = user.role || 'learner';
+        if (role !== 'learner') return false;
         const searchTerm = (user.username || user.email || '').toLowerCase();
         return searchTerm.includes(searchQuery);
       });
-      assignedLearners.forEach(([uid, user]) => {
+      visibleLearners.forEach(([uid, user]) => {
         const card = document.createElement('div');
-        card.className = 'user-card';
+        card.className = `user-card ${selectedLearners.has(uid) ? 'selected' : ''}`;
+        card.setAttribute('data-userid', uid);
         const initial = (user.username || user.email)[0].toUpperCase();
+        let teacherOptions = '<option value="">No Teacher</option>';
+        Object.entries(allTeachers).forEach(([tid, teacher]) => {
+          const selected = user.teacherId === tid ? 'selected' : '';
+          teacherOptions += `<option value="${tid}" ${selected}>${teacher.username || teacher.email}</option>`;
+        });
         card.innerHTML = `
+          <input type="checkbox" class="user-checkbox" ${selectedLearners.has(uid) ? 'checked' : ''} onchange="toggleSelection('${uid}', this.checked)">
           <div class="user-avatar-small">${initial}</div>
           <div class="user-name">${user.username || user.email}</div>
-          <div class="user-meta">Email: ${user.email} ${user.enrolledCourses ? `• Enrolled Courses: ${Object.keys(user.enrolledCourses).length}` : ''}</div>
+          <div class="user-meta">Role: ${user.role || 'learner'} ${user.teacherId ? `• Assigned to: ${allTeachers[user.teacherId]?.username || allTeachers[user.teacherId]?.email}` : ''}</div>
+          <form class="assign-form" data-userid="${uid}">
+            <select id="teacher-select-${uid}">${teacherOptions}</select>
+            <button type="submit" class="assign-btn">Assign</button>
+          </form>
+        `;
+        const form = card.querySelector('form');
+        const assignBtn = form.querySelector('.assign-btn');
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const select = form.querySelector('select');
+          if (!select.value) {
+            showDialog('Please select a teacher.', 'error');
+            return;
+          }
+          assignBtn.disabled = true;
+          showLoader();
+          const teacherId = select.value;
+          const updates = { teacherId };
+          if (teacherId) {
+            const teacher = allTeachers[teacherId];
+            updates.teacherName = teacher.username || teacher.email;
+            await update(ref(db, `users/${teacherId}`), { assignedLearners: (teacher.assignedLearners || 0) + 1 });
+          } else if (user.teacherId) {
+            const prevTeacher = allTeachers[user.teacherId];
+            await update(ref(db, `users/${user.teacherId}`), { assignedLearners: Math.max((prevTeacher.assignedLearners || 0) - 1, 0) });
+          }
+          await update(ref(db, `users/${uid}`), updates);
+          hideLoader();
+          showDialog('Teacher assigned successfully!', 'success');
+          setTimeout(() => { assignBtn.disabled = false; }, 2000);
+        });
+        card.addEventListener('click', (e) => {
+          if (!e.target.closest('form') && !e.target.classList.contains('user-checkbox')) {
+            const checkbox = card.querySelector('.user-checkbox');
+            checkbox.checked = !checkbox.checked;
+            toggleSelection(uid, checkbox.checked);
+          }
+        });
+        grid.appendChild(card);
+      });
+      if (visibleLearners.length === 0) {
+        const message = searchQuery ? `<p class="text-center" style="color: var(--text-secondary);">No learners match "${searchQuery}".</p>` : '<p class="text-center text-var(--text-secondary)">No learners to assign yet.</p>';
+        grid.innerHTML = message;
+      }
+      updateBulkControls();
+    }
+
+    // Handle individual selection toggle
+    window.toggleSelection = (uid, isSelected) => {
+      if (isSelected) {
+        selectedLearners.add(uid);
+      } else {
+        selectedLearners.delete(uid);
+      }
+      const card = document.querySelector(`[data-userid="${uid}"]`);
+      if (card) card.classList.toggle('selected', isSelected);
+      updateBulkControls();
+    };
+
+    // Handle bulk assign form
+    document.getElementById('bulk-assign-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const select = document.getElementById('bulk-teacher-select');
+      const teacherId = select.value;
+      if (!teacherId) {
+        showDialog('Please select a teacher for bulk assignment.', 'error');
+        return;
+      }
+      if (selectedLearners.size === 0) {
+        showDialog('No learners selected.', 'error');
+        return;
+      }
+      showLoader();
+      const teacher = allTeachers[teacherId];
+      const teacherName = teacher.username || teacher.email;
+      const updates = { teacherId, teacherName };
+      const batchPromises = Array.from(selectedLearners).map(async (uid) => {
+        const learner = allUsers[uid];
+        if (learner.teacherId && learner.teacherId !== teacherId) {
+          const prevTeacher = allTeachers[learner.teacherId];
+          await update(ref(db, `users/${learner.teacherId}`), { assignedLearners: Math.max((prevTeacher.assignedLearners || 0) - 1, 0) });
+        }
+        await update(ref(db, `users/${uid}`), updates);
+      });
+      await Promise.all(batchPromises);
+      await update(ref(db, `users/${teacherId}`), { assignedLearners: (teacher.assignedLearners || 0) + selectedLearners.size });
+      hideLoader();
+      showDialog(`${selectedLearners.size} learners assigned to ${teacherName}!`, 'success');
+      selectedLearners.clear();
+      populateUsers();
+    });
+
+    // NEW: Handle add learner form
+    document.getElementById('add-learner-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      showLoader();
+      const username = document.getElementById('new-learner-username').value.trim();
+      const email = document.getElementById('new-learner-email').value.trim();
+      const tempPassword = document.getElementById('new-learner-password').value.trim();
+      if (!username || !email || !tempPassword) {
+        hideLoader();
+        showDialog('Please fill all fields.', 'error');
+        return;
+      }
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, tempPassword);
+        const newUser = userCredential.user;
+        await set(ref(db, `users/${newUser.uid}`), {
+          username,
+          email: newUser.email,
+          role: 'learner',
+          teacherId: null,
+          teacherName: null
+        });
+        hideLoader();
+        showDialog(`Learner onboarded successfully! UID: ${newUser.uid}\nEmail: ${email}\nTemp Password: ${tempPassword}\nShare these with the learner to sign in.`, 'success');
+        e.target.reset();
+      } catch (error) {
+        hideLoader();
+        showDialog(`Error onboarding learner: ${error.message}`, 'error');
+      }
+    });
+
+    // Populate teachers grid
+    function populateTeachers() {
+      const grid = document.getElementById('teachers-grid');
+      grid.innerHTML = '';
+      Object.entries(allTeachers).forEach(([uid, teacher]) => {
+        const card = document.createElement('div');
+        card.className = 'user-card';
+        const initial = (teacher.username || teacher.email)[0].toUpperCase();
+        let assignedCount = teacher.assignedLearners || 0;
+        assignedCount = Object.values(allUsers).filter(u => u.teacherId === uid).length;
+        card.innerHTML = `
+          <div class="user-avatar-small">${initial}</div>
+          <div class="user-name">${teacher.username || teacher.email}</div>
+          <div class="user-meta">Role: teacher • Assigned Learners: ${assignedCount}</div>
         `;
         grid.appendChild(card);
       });
-      if (assignedLearners.length === 0) {
-        const message = searchQuery ? `<p class="text-center" style="color: var(--text-secondary);">No assigned learners match "${searchQuery}".</p>` : '<p class="text-center" style="color: var(--text-secondary);">No learners assigned yet.</p>';
-        grid.innerHTML = message;
-      }
     }
+
+    // Populate courses grid (simple list for now)
+    function populateCourses() {
+      const grid = document.getElementById('courses-grid');
+      grid.innerHTML = '';
+      Object.entries(allCourses).forEach(([courseId, course]) => {
+        const card = document.createElement('div');
+        card.className = 'user-card';
+        let enrolledCount = course.enrolled || 0;
+        enrolledCount = Object.values(allUsers).filter(u => u.enrolledCourses && Object.keys(u.enrolledCourses).includes(courseId)).length;
+        card.innerHTML = `
+          <div class="user-name">${course.title}</div>
+          <div class="user-meta">ID: ${courseId} • Enrolled: ${enrolledCount}</div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    // Populate analytics (placeholder cards)
+    function populateAnalytics() {
+      const grid = document.getElementById('analytics-grid');
+      grid.innerHTML = `
+        <div class="analytics-card">
+          <h3>Weekly Active Users</h3>
+          <p id="weekly-users">124</p>
+        </div>
+        <div class="analytics-card">
+          <h3>Average Completion Rate</h3>
+          <p id="avg-completion">72%</p>
+        </div>
+        <div class="analytics-card">
+          <h3>New Enrollments</h3>
+          <p id="new-enrollments">45</p>
+        </div>
+      `;
+      // In production, fetch real analytics from Firebase
+    }
+
+    // Handle admin settings save
+    document.getElementById('admin-settings-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      showLoader();
+      const platformName = document.getElementById('platform-name').value;
+      const supportEmail = document.getElementById('support-email').value;
+      const settings = { platformName, supportEmail };
+      await set(ref(db, 'admin/settings'), settings);
+      hideLoader();
+      showDialog('Settings saved successfully!', 'success');
+    });
+
+    // Handle add teacher form
+    document.getElementById('add-teacher-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      showLoader();
+      const username = document.getElementById('new-teacher-username').value.trim();
+      const email = document.getElementById('new-teacher-email').value.trim();
+      const tempPassword = document.getElementById('new-teacher-password').value.trim();
+      if (!username || !email || !tempPassword) {
+        hideLoader();
+        showDialog('Please fill all fields.', 'error');
+        return;
+      }
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, tempPassword);
+        const newUser = userCredential.user;
+        await set(ref(db, `users/${newUser.uid}`), {
+          username,
+          email: newUser.email,
+          role: 'teacher',
+          assignedLearners: 0
+        });
+        hideLoader();
+        showDialog(`Teacher onboarded successfully! UID: ${newUser.uid}\nEmail: ${email}\nTemp Password: ${tempPassword}\nShare these with the teacher to sign in.`, 'success');
+        e.target.reset();
+      } catch (error) {
+        hideLoader();
+        showDialog(`Error onboarding teacher: ${error.message}`, 'error');
+      }
+    });
 
     // Auth state listener
     onAuthStateChanged(auth, (user) => {
       if (user) {
         currentUser = user;
         showLoader();
-        updateAvatar(null);  // Use email initial for teacher
+        updateAvatar(null);  // Use email initial for admin
         document.getElementById('user-name').textContent = user.email;
 
-        // Fetch all users to find assigned ones
+        // Fetch all users
         const usersRef = ref(db, 'users');
         onValue(usersRef, (snapshot) => {
           allUsers = snapshot.val() || {};
-          updateStats();
-          populateAssignedLearners();
-          hideLoader();
+          // Separate teachers
+          allTeachers = {};
+          Object.entries(allUsers).forEach(([uid, user]) => {
+            const role = user.role || 'learner';
+            if (role === 'teacher') {
+              allTeachers[uid] = user;
+            }
+          });
+          populateAdminStats();
+          populateUsers();
+          populateTeachers();
         });
+
+        // Fetch courses (assume stored under /courses)
+        const coursesRef = ref(db, 'courses');
+        onValue(coursesRef, (snapshot) => {
+          allCourses = snapshot.val() || {};
+          populateCourses();
+        });
+
+        populateAnalytics();
+
+        if (isInitialLoad) {
+          isInitialLoad = false;
+          hideLoader();
+        }
       } else {
         hideLoader();
         window.location.href = 'login.html';
