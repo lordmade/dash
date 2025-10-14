@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-touch-fullscreen" content="yes">
+  <title>Vynix - Admin Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      --card-bg: rgba(255, 255, 255, 0.95);
+      --text-primary: #1a202c;
+      --text-secondary: #718096;
+      --border: rgba(226, 232, 240, 0.8);
+      --accent: #4299e1;
+      --accent-secondary: #48bb78;
+      --gradient: linear-gradient(135deg, #4299e1 0%, #48bb78 50%, #ed8936 100%);
+      --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --shadow-md: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      --glass: rgba(255, 255, 255, 0.25);
+    }
+    body.dark {
+      --bg: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+      --card-bg: rgba(45, 55, 72, 0.95);
+      --text-primary: #f7fafc;
+      --text-secondary: #a0aec0;
+      --border: rgba(255, 255, 255, 0.1);
+      --accent: #63b3ed;
+      --accent-secondary: #68d391;
+      --gradient: linear-gradient(135deg, #63b3ed 0%, #68d391 50%, #f6ad55 100%);
+      --glass: rgba(255, 255, 255, 0.1);
+    }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+      line-height: 1.6;
+      min-height: 100vh;
+      position: relative;
+    }
+    body::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(circle at 20% 80%, rgba(66, 153, 225, 0.1) 0%, transparent 50%), 
+                  radial-gradient(circle at 80% 20%, rgba(72, 187, 120, 0.1) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: -1;
+    }
+    .navbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      z-index: 1000;
+      padding: 16px 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.3s ease;
+    }
+    .navbar.scrolled {
+      background: var(--card-bg);
+      box-shadow: var(--shadow-sm);
+      padding: 12px 40px;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 24px;
+      font-weight: 800;
+      background: var(--gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: var(--gradient);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .user-menu {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .user-avatar {
+      width: 40px;
+      height: 40px;
+      background: var(--gradient);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .user-avatar:hover {
+      transform: scale(1.05);
+    }
+    .user-avatar img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    .logout-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 14px;
+      transition: color 0.3s ease;
+    }
+    .logout-btn:hover {
+      color: var(--accent);
+    }
+    .sidebar {
+      position: fixed;
+      left: 0;
+      top: 80px;
+      bottom: 0;
+      width: 280px;
+      background: var(--card-bg);
+      backdrop-filter: blur(20px);
+      border-right: 1px solid var(--border);
+      padding: 24px 0;
+      overflow-y: auto;
+      z-index: 900;
+      transition: transform 0.3s ease;
+    }
+    .sidebar ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .sidebar li {
+      margin: 0;
+    }
+    .sidebar a {
+      display: block;
+      padding: 16px 40px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      border-left: 3px solid transparent;
+    }
+    .sidebar a:hover,
+    .sidebar a.active {
+      color: var(--accent);
+      background: rgba(66, 153, 225, 0.1);
+      border-left-color: var(--accent);
+    }
+    .main-content {
+      margin-left: 280px;
+      margin-top: 80px;
+      padding: 40px;
+      min-height: calc(100vh - 80px);
+    }
+    .welcome-section {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+    .welcome-title {
+      font-size: 48px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      background: var(--gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.2;
+    }
+    .welcome-subtitle {
+      font-size: 20px;
+      color: var(--text-secondary);
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 24px;
+      margin-bottom: 48px;
+    }
+    .stat-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 32px;
+      text-align: center;
+      transition: all 0.3s ease;
+      box-shadow: var(--shadow-sm);
+    }
+    .stat-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-md);
+    }
+    .stat-number {
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    .stat-label {
+      font-size: 16px;
+      color: var(--text-secondary);
+      font-weight: 600;
+    }
+    .section-title {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 24px;
+      color: var(--text-primary);
+    }
+    .users-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+    }
+    .user-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 24px;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.3s ease;
+    }
+    .user-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-md);
+    }
+    .user-avatar-small {
+      width: 50px;
+      height: 50px;
+      background: var(--gradient);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .user-name {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .user-meta {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+    }
+    .assign-form {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .assign-form select,
+    .assign-form input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--card-bg);
+      color: var(--text-primary);
+    }
+    .assign-btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .assign-btn:hover {
+      background: var(--accent-secondary);
+    }
+    .analytics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 24px;
+    }
+    .analytics-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .dark-toggle {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: var(--text-primary);
+      transition: color 0.3s ease;
+      margin-left: auto;
+    }
+    .dark-toggle:hover {
+      color: var(--accent);
+    }
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--card-bg);
+      backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border);
+      z-index: 1000;
+      display: none;
+    }
+    .bottom-nav ul {
+      display: flex;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      justify-content: space-around;
+      padding: 10px 0;
+    }
+    .bottom-nav a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: color 0.3s ease;
+    }
+    .bottom-nav a:hover,
+    .bottom-nav a.active {
+      color: var(--accent);
+    }
+    .bottom-nav .material-icons {
+      font-size: 24px;
+    }
+    section {
+      display: none;
+    }
+    #dashboard {
+      display: block;
+    }
+    .dialog-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    }
+    .dialog-backdrop.show {
+      opacity: 1;
+      visibility: visible;
+    }
+    .dialog {
+      background: var(--card-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 32px;
+      max-width: 400px;
+      width: 90%;
+      text-align: center;
+      box-shadow: var(--shadow-md);
+      transform: scale(0.9) translateY(20px);
+      transition: all 0.3s ease;
+      position: relative;
+    }
+    .dialog-backdrop.show .dialog {
+      transform: scale(1) translateY(0);
+    }
+    .dialog-title {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: var(--text-primary);
+    }
+    .dialog-message {
+      font-size: 16px;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+    .dialog-close {
+      background: var(--gradient);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.3s ease;
+      width: 100%;
+    }
+    .dialog-close:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+    .dialog.success .dialog-title {
+      color: var(--accent-secondary);
+    }
+    .dialog.error .dialog-title {
+      color: #e53e3e;
+    }
+    .loader-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--glass);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    }
+    body.dark .loader-overlay {
+      background: rgba(0, 0, 0, 0.5);
+    }
+    .loader-overlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
+    .spinner {
+      border: 4px solid var(--border);
+      border-top: 4px solid var(--accent);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    @media (max-width: 1024px) {
+      .sidebar {
+        transform: translateX(-100%);
+      }
+      .main-content {
+        margin-left: 0;
+      }
+      .sidebar.open {
+        transform: translateX(0);
+      }
+    }
+    @media (max-width: 768px) {
+      .navbar { padding: 16px 20px; }
+      .main-content { padding: 20px; margin-top: 70px; }
+      .welcome-title { font-size: 36px; }
+      .users-grid { grid-template-columns: 1fr; }
+      .bottom-nav { display: block; }
+      .dialog { padding: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Overlay Spinner -->
+  <div class="loader-overlay" id="loader-overlay">
+    <div class="spinner"></div>
+  </div>
+
+  <nav class="navbar" id="navbar">
+    <a class="logo" id="logo-link">
+      <div class="logo-icon">V</div>
+      Vynix Admin
+    </a>
+    <div class="user-menu">
+      <span id="user-name">Admin</span>
+      <div class="user-avatar" id="user-avatar">A</div>
+      <button class="dark-toggle" onclick="toggleDarkMode()" title="Toggle Dark Mode">🌙</button>
+      <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+  </nav>
+
+  <aside class="sidebar" id="sidebar">
+    <ul>
+      <li><a href="#" class="active" data-target="dashboard">Dashboard</a></li>
+      <li><a href="#users" data-target="users">Users</a></li>
+      <li><a href="#teachers" data-target="teachers">Teachers</a></li>
+      <li><a href="#courses" data-target="courses">Courses</a></li>
+      <li><a href="#analytics" data-target="analytics">Analytics</a></li>
+      <li><a href="#settings" data-target="settings">Settings</a></li>
+    </ul>
+  </aside>
+
+  <main class="main-content">
+    <section id="dashboard">
+      <div class="welcome-section">
+        <h1 class="welcome-title">Admin Overview</h1>
+        <p class="welcome-subtitle">Manage your platform, monitor progress, and drive growth.</p>
+      </div>
+
+      <div class="stats-grid" id="admin-stats-grid">
+        <div class="stat-card">
+          <div class="stat-number" id="total-users">0</div>
+          <div class="stat-label">Total Users</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="total-learners">0</div>
+          <div class="stat-label">Learners</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="total-teachers">0</div>
+          <div class="stat-label">Teachers</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="total-courses">0</div>
+          <div class="stat-label">Courses Created</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="users" class="courses-section">
+      <h2 class="section-title">Manage Users</h2>
+      <div class="users-grid" id="users-grid">
+        <!-- Users will be populated here -->
+      </div>
+    </section>
+
+    <section id="teachers" class="courses-section">
+      <h2 class="section-title">Manage Teachers</h2>
+      <div class="users-grid" id="teachers-grid">
+        <!-- Teachers will be populated here -->
+      </div>
+    </section>
+
+    <section id="courses" class="courses-section">
+      <h2 class="section-title">Manage Courses</h2>
+      <div class="users-grid" id="courses-grid">
+        <!-- Courses will be populated here -->
+      </div>
+    </section>
+
+    <section id="analytics" class="courses-section">
+      <h2 class="section-title">Analytics</h2>
+      <div class="analytics-grid" id="analytics-grid">
+        <!-- Analytics cards will be populated here -->
+      </div>
+    </section>
+
+    <section id="settings" class="courses-section">
+      <h2 class="section-title">Admin Settings</h2>
+      <div class="profile-card">
+        <form id="admin-settings-form">
+          <div class="form-group">
+            <label for="platform-name">Platform Name</label>
+            <input type="text" id="platform-name" placeholder="Vynix Learning">
+          </div>
+          <div class="form-group">
+            <label for="support-email">Support Email</label>
+            <input type="email" id="support-email" placeholder="support@vynix.com">
+          </div>
+          <button type="submit" class="save-btn">Save Settings</button>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <nav class="bottom-nav">
+    <ul>
+      <li><a href="#" data-target="dashboard" class="active"><span class="material-icons">dashboard</span></a></li>
+      <li><a href="#users" data-target="users"><span class="material-icons">people</span></a></li>
+      <li><a href="#teachers" data-target="teachers"><span class="material-icons">school</span></a></li>
+      <li><a href="#courses" data-target="courses"><span class="material-icons">library_books</span></a></li>
+      <li><a href="#analytics" data-target="analytics"><span class="material-icons">bar_chart</span></a></li>
+      <li><a href="#settings" data-target="settings"><span class="material-icons">settings</span></a></li>
+    </ul>
+  </nav>
+
+  <!-- Custom Dialog -->
+  <div class="dialog-backdrop" id="dialog-backdrop">
+    <div class="dialog" id="dialog">
+      <div class="dialog-title" id="dialog-title">Info</div>
+      <div class="dialog-message" id="dialog-message"></div>
+      <button class="dialog-close" onclick="closeDialog()">OK</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+    import { getAuth, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+    import { getDatabase, ref, onValue, set, update, push } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBOyZ3As4GTuNvjemvPF_SpsC6m6vqtNhc",
+      authDomain: "fire-b-a8878.firebaseapp.com",
+      databaseURL: "https://fire-b-a8878.firebaseio.com",
+      projectId: "fire-b-a8878",
+      storageBucket: "fire-b-a8878.firebasestorage.app",
+      messagingSenderId: "658673187627",
+      appId: "1:658673187627:web:6e4c29af661785f0afa36e",
+      measurementId: "G-V4W97VMSKL"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+
+    let currentUser = null;
+    let allUsers = {};
+    let allTeachers = {};
+    let allCourses = {};
+    let isInitialLoad = true;
+
+    const loader = document.getElementById('loader-overlay');
+
+    function showLoader() {
+      loader.classList.add('show');
+    }
+
+    function hideLoader() {
+      loader.classList.remove('show');
+    }
+
+    // Custom Dialog Functions
+    function showDialog(message, type = 'info') {
+      const backdrop = document.getElementById('dialog-backdrop');
+      const title = document.getElementById('dialog-title');
+      const msg = document.getElementById('dialog-message');
+      const dialog = document.getElementById('dialog');
+
+      msg.textContent = message;
+      title.textContent = type === 'success' ? 'Success!' : type === 'error' ? 'Error!' : 'Info';
+      dialog.className = `dialog ${type}`;
+      backdrop.classList.add('show');
+    }
+
+    function closeDialog() {
+      document.getElementById('dialog-backdrop').classList.remove('show');
+    }
+
+    // Close dialog on backdrop click
+    document.getElementById('dialog-backdrop').addEventListener('click', (e) => {
+      if (e.target.id === 'dialog-backdrop') {
+        closeDialog();
+      }
+    });
+
+    // Tab switching function
+    function showTab(targetId) {
+      document.querySelectorAll('section').forEach(section => {
+        section.style.display = 'none';
+      });
+      const targetSection = document.getElementById(targetId);
+      if (targetSection) {
+        targetSection.style.display = 'block';
+      }
+    }
+
+    // Dark mode toggle
+    function toggleDarkMode() {
+      document.body.classList.toggle('dark');
+      const isDark = document.body.classList.contains('dark');
+      localStorage.setItem('darkMode', isDark);
+      document.querySelector('.dark-toggle').textContent = isDark ? '☀️' : '🌙';
+    }
+
+    // Load saved theme
+    if (localStorage.getItem('darkMode') === 'true') {
+      document.body.classList.add('dark');
+      document.querySelector('.dark-toggle').textContent = '☀️';
+    }
+
+    // Navbar scroll effect
+    window.addEventListener('scroll', () => {
+      const navbar = document.getElementById('navbar');
+      if (window.scrollY > 50) {
+        navbar.classList.add('scrolled');
+      } else {
+        navbar.classList.remove('scrolled');
+      }
+    });
+
+    // Sidebar toggle for mobile
+    const sidebar = document.getElementById('sidebar');
+    const logoLink = document.getElementById('logo-link');
+    logoLink.addEventListener('click', (e) => {
+      if (window.innerWidth <= 1024) {
+        e.preventDefault();
+        sidebar.classList.toggle('open');
+      }
+    });
+
+    // Navigation handling
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('a[data-target]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+          e.preventDefault();
+          const target = this.getAttribute('data-target');
+          showTab(target);
+          // Update active classes
+          document.querySelectorAll('a[data-target]').forEach(a => a.classList.remove('active'));
+          this.classList.add('active');
+        });
+      });
+      // Initialize dashboard
+      showTab('dashboard');
+    });
+
+    // Logout
+    window.logout = async () => {
+      await signOut(auth);
+      window.location.href = 'login.html';
+    };
+
+    // Update avatar
+    function updateAvatar(url) {
+      const avatar = document.getElementById('user-avatar');
+      if (url) {
+        avatar.innerHTML = `<img src="${url}" alt="Profile">`;
+        avatar.style.background = 'none';
+      } else {
+        const initial = (currentUser.email)[0].toUpperCase();
+        avatar.innerHTML = initial;
+        avatar.style.background = 'var(--gradient)';
+      }
+    }
+
+    // Populate admin stats
+    function populateAdminStats() {
+      let totalUsers = 0;
+      let totalLearners = 0;
+      let totalTeachers = 0;
+      let totalCourses = Object.keys(allCourses).length;
+
+      Object.entries(allUsers).forEach(([uid, user]) => {
+        totalUsers++;
+        if (user.role === 'learner') totalLearners++;
+        if (user.role === 'teacher') totalTeachers++;
+      });
+
+      document.getElementById('total-users').textContent = totalUsers;
+      document.getElementById('total-learners').textContent = totalLearners;
+      document.getElementById('total-teachers').textContent = totalTeachers;
+      document.getElementById('total-courses').textContent = totalCourses;
+    }
+
+    // Populate users grid
+    function populateUsers() {
+      const grid = document.getElementById('users-grid');
+      grid.innerHTML = '';
+      Object.entries(allUsers).forEach(([uid, user]) => {
+        if (user.role !== 'admin') {  // Exclude admins from list
+          const card = document.createElement('div');
+          card.className = 'user-card';
+          const initial = (user.username || user.email)[0].toUpperCase();
+          let teacherOptions = '<option value="">No Teacher</option>';
+          Object.entries(allTeachers).forEach(([tid, teacher]) => {
+            const selected = user.teacherId === tid ? 'selected' : '';
+            teacherOptions += `<option value="${tid}" ${selected}>${teacher.username || teacher.email}</option>`;
+          });
+          card.innerHTML = `
+            <div class="user-avatar-small">${initial}</div>
+            <div class="user-name">${user.username || user.email}</div>
+            <div class="user-meta">Role: ${user.role || 'learner'}</div>
+            <form class="assign-form" data-userid="${uid}">
+              <select id="teacher-select-${uid}">${teacherOptions}</select>
+              <button type="submit" class="assign-btn">Assign</button>
+            </form>
+          `;
+          const form = card.querySelector('form');
+          form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoader();
+            const teacherId = form.querySelector('select').value;
+            const updates = { teacherId };
+            if (teacherId) {
+              const teacher = allTeachers[teacherId];
+              updates.teacherName = teacher.username || teacher.email;
+            }
+            await update(ref(db, `users/${uid}`), updates);
+            hideLoader();
+            showDialog('Teacher assigned successfully!', 'success');
+          });
+          grid.appendChild(card);
+        }
+      });
+    }
+
+    // Populate teachers grid
+    function populateTeachers() {
+      const grid = document.getElementById('teachers-grid');
+      grid.innerHTML = '';
+      Object.entries(allTeachers).forEach(([uid, teacher]) => {
+        const card = document.createElement('div');
+        card.className = 'user-card';
+        const initial = (teacher.username || teacher.email)[0].toUpperCase();
+        card.innerHTML = `
+          <div class="user-avatar-small">${initial}</div>
+          <div class="user-name">${teacher.username || teacher.email}</div>
+          <div class="user-meta">Role: teacher • Assigned Learners: ${teacher.assignedLearners || 0}</div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    // Populate courses grid (simple list for now)
+    function populateCourses() {
+      const grid = document.getElementById('courses-grid');
+      grid.innerHTML = '';
+      Object.entries(allCourses).forEach(([courseId, course]) => {
+        const card = document.createElement('div');
+        card.className = 'user-card';
+        card.innerHTML = `
+          <div class="user-name">${course.title}</div>
+          <div class="user-meta">ID: ${courseId} • Enrolled: ${course.enrolled || 0}</div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    // Populate analytics (placeholder cards)
+    function populateAnalytics() {
+      const grid = document.getElementById('analytics-grid');
+      grid.innerHTML = `
+        <div class="analytics-card">
+          <h3>Weekly Active Users</h3>
+          <p id="weekly-users">124</p>
+        </div>
+        <div class="analytics-card">
+          <h3>Average Completion Rate</h3>
+          <p id="avg-completion">72%</p>
+        </div>
+        <div class="analytics-card">
+          <h3>New Enrollments</h3>
+          <p id="new-enrollments">45</p>
+        </div>
+      `;
+      // In production, fetch real analytics from Firebase
+    }
+
+    // Handle admin settings save
+    document.getElementById('admin-settings-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      showLoader();
+      const platformName = document.getElementById('platform-name').value;
+      const supportEmail = document.getElementById('support-email').value;
+      const settings = { platformName, supportEmail };
+      await set(ref(db, 'admin/settings'), settings);
+      hideLoader();
+      showDialog('Settings saved successfully!', 'success');
+    });
+
+    // Auth state listener
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        currentUser = user;
+        showLoader();
+        updateAvatar(null);  // Use email initial for admin
+        document.getElementById('user-name').textContent = user.email;
+
+        // Fetch all users
+        const usersRef = ref(db, 'users');
+        onValue(usersRef, (snapshot) => {
+          allUsers = snapshot.val() || {};
+          // Separate teachers
+          allTeachers = {};
+          Object.entries(allUsers).forEach(([uid, user]) => {
+            if (user.role === 'teacher') {
+              allTeachers[uid] = user;
+              // Count assigned learners
+              let count = 0;
+              Object.values(allUsers).forEach(u => {
+                if (u.teacherId === uid) count++;
+              });
+              allTeachers[uid].assignedLearners = count;
+            }
+          });
+          populateAdminStats();
+          populateUsers();
+          populateTeachers();
+        });
+
+        // Fetch courses (assume stored under /courses)
+        const coursesRef = ref(db, 'courses');
+        onValue(coursesRef, (snapshot) => {
+          allCourses = snapshot.val() || {};
+          populateCourses();
+        });
+
+        populateAnalytics();
+
+        if (isInitialLoad) {
+          isInitialLoad = false;
+          hideLoader();
+        }
+      } else {
+        hideLoader();
+        window.location.href = 'login.html';
+      }
+    });
+  </script>
+</body>
+</html>
