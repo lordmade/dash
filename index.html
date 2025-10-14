@@ -363,6 +363,33 @@
     .select-all-btn:hover {
       background: var(--accent);
     }
+    .search-bar {
+      position: relative;
+      max-width: 400px;
+      margin-bottom: 24px;
+    }
+    .search-bar input {
+      width: 100%;
+      padding: 12px 16px 12px 40px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--card-bg);
+      color: var(--text-primary);
+      font-size: 16px;
+      transition: border-color 0.3s ease;
+    }
+    .search-bar input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .search-bar .material-icons {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-secondary);
+      font-size: 20px;
+    }
     .analytics-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -607,6 +634,7 @@
       .bottom-nav { display: block; }
       .dialog { padding: 24px; }
       .bulk-controls .assign-form { flex-direction: column; align-items: stretch; }
+      .search-bar { max-width: 100%; }
     }
   </style>
 </head>
@@ -669,6 +697,28 @@
 
     <section id="users" class="courses-section">
       <h2 class="section-title">Manage Users</h2>
+      <div class="profile-card" style="margin-bottom: 24px;">
+        <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 20px; color: var(--text-primary);">Onboard New Learner</h3>
+        <form id="add-learner-form">
+          <div class="form-group">
+            <label for="new-learner-username">Username</label>
+            <input type="text" id="new-learner-username" placeholder="Enter username" required>
+          </div>
+          <div class="form-group">
+            <label for="new-learner-email">Email</label>
+            <input type="email" id="new-learner-email" placeholder="Enter email" required>
+          </div>
+          <div class="form-group">
+            <label for="new-learner-password">Temporary Password</label>
+            <input type="password" id="new-learner-password" placeholder="Enter or generate temp password" required>
+          </div>
+          <button type="submit" class="save-btn">Onboard New Learner</button>
+        </form>
+      </div>
+      <div class="search-bar">
+        <span class="material-icons">search</span>
+        <input type="text" id="learner-search" placeholder="Search learners by name or email..." oninput="filterLearners()">
+      </div>
       <button class="select-all-btn" id="select-all-btn" onclick="toggleSelectAll()">Select All Learners</button>
       <div class="bulk-controls" id="bulk-controls">
         <div class="bulk-summary" id="bulk-summary"></div>
@@ -783,7 +833,8 @@
     let allTeachers = {};
     let allCourses = {};
     let isInitialLoad = true;
-    let selectedLearners = new Set();  // NEW: Track selected learners for bulk
+    let selectedLearners = new Set();
+    let searchQuery = '';  // NEW: For search filtering
 
     const loader = document.getElementById('loader-overlay');
 
@@ -829,25 +880,24 @@
         targetSection.style.display = 'block';
       }
       if (targetId === 'users') {
-        updateBulkControls();  // NEW: Refresh bulk UI on tab switch
+        updateBulkControls();
       }
     }
 
-    // NEW: Toggle all learners selection
+    // Toggle all learners selection
     window.toggleSelectAll = () => {
-      const btn = document.getElementById('select-all-btn');
-      if (selectedLearners.size === Object.values(allUsers).filter(u => u.role === 'learner').length) {
+      const learners = Object.entries(allUsers).filter(([uid, user]) => user.role === 'learner');
+      const totalLearners = learners.length;
+      if (selectedLearners.size === totalLearners) {
         selectedLearners.clear();
       } else {
-        Object.entries(allUsers).forEach(([uid]) => {
-          if (allUsers[uid].role === 'learner') selectedLearners.add(uid);
-        });
+        learners.forEach(([uid]) => selectedLearners.add(uid));
       }
       updateBulkControls();
-      populateUsers();  // Repopulate to reflect selections
+      filterLearners();  // Repopulate to reflect selections
     };
 
-    // NEW: Update bulk controls visibility and summary
+    // Update bulk controls visibility and summary
     function updateBulkControls() {
       const bulkControls = document.getElementById('bulk-controls');
       const summary = document.getElementById('bulk-summary');
@@ -868,6 +918,12 @@
         btnText.textContent = 'Select All Learners';
       }
     }
+
+    // NEW: Filter learners based on search query
+    window.filterLearners = () => {
+      searchQuery = document.getElementById('learner-search').value.toLowerCase();
+      populateUsers();
+    };
 
     // Dark mode toggle
     function toggleDarkMode() {
@@ -958,76 +1014,79 @@
       document.getElementById('total-courses').textContent = totalCourses;
     }
 
-    // UPDATED: Populate users grid - now with checkboxes for bulk selection
+    // UPDATED: Populate users grid - with search filtering
     function populateUsers() {
       const grid = document.getElementById('users-grid');
       grid.innerHTML = '';
-      Object.entries(allUsers).forEach(([uid, user]) => {
+      let visibleLearners = Object.entries(allUsers).filter(([uid, user]) => {
         const role = user.role || 'learner';
-        if (role === 'learner') {
-          const card = document.createElement('div');
-          card.className = `user-card ${selectedLearners.has(uid) ? 'selected' : ''}`;
-          card.setAttribute('data-userid', uid);
-          const initial = (user.username || user.email)[0].toUpperCase();
-          let teacherOptions = '<option value="">No Teacher</option>';
-          Object.entries(allTeachers).forEach(([tid, teacher]) => {
-            const selected = user.teacherId === tid ? 'selected' : '';
-            teacherOptions += `<option value="${tid}" ${selected}>${teacher.username || teacher.email}</option>`;
-          });
-          card.innerHTML = `
-            <input type="checkbox" class="user-checkbox" ${selectedLearners.has(uid) ? 'checked' : ''} onchange="toggleSelection('${uid}', this.checked)">
-            <div class="user-avatar-small">${initial}</div>
-            <div class="user-name">${user.username || user.email}</div>
-            <div class="user-meta">Role: ${role} ${user.teacherId ? `• Assigned to: ${allTeachers[user.teacherId]?.username || allTeachers[user.teacherId]?.email}` : ''}</div>
-            <form class="assign-form" data-userid="${uid}">
-              <select id="teacher-select-${uid}">${teacherOptions}</select>
-              <button type="submit" class="assign-btn">Assign</button>
-            </form>
-          `;
-          const form = card.querySelector('form');
-          const assignBtn = form.querySelector('.assign-btn');
-          form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const select = form.querySelector('select');
-            if (!select.value) {
-              showDialog('Please select a teacher.', 'error');
-              return;
-            }
-            assignBtn.disabled = true;
-            showLoader();
-            const teacherId = select.value;
-            const updates = { teacherId };
-            if (teacherId) {
-              const teacher = allTeachers[teacherId];
-              updates.teacherName = teacher.username || teacher.email;
-              await update(ref(db, `users/${teacherId}`), { assignedLearners: (teacher.assignedLearners || 0) + 1 });
-            } else if (user.teacherId) {
-              const prevTeacher = allTeachers[user.teacherId];
-              await update(ref(db, `users/${user.teacherId}`), { assignedLearners: Math.max((prevTeacher.assignedLearners || 0) - 1, 0) });
-            }
-            await update(ref(db, `users/${uid}`), updates);
-            hideLoader();
-            showDialog('Teacher assigned successfully!', 'success');
-            setTimeout(() => { assignBtn.disabled = false; }, 2000);
-          });
-          // NEW: Click card to toggle selection (except form)
-          card.addEventListener('click', (e) => {
-            if (!e.target.closest('form') && !e.target.classList.contains('user-checkbox')) {
-              const checkbox = card.querySelector('.user-checkbox');
-              checkbox.checked = !checkbox.checked;
-              toggleSelection(uid, checkbox.checked);
-            }
-          });
-          grid.appendChild(card);
-        }
+        if (role !== 'learner') return false;
+        const searchTerm = (user.username || user.email || '').toLowerCase();
+        return searchTerm.includes(searchQuery);
       });
-      if (grid.children.length === 0) {
-        grid.innerHTML = '<p class="text-center text-var(--text-secondary)">No learners to assign yet.</p>';
+      visibleLearners.forEach(([uid, user]) => {
+        const card = document.createElement('div');
+        card.className = `user-card ${selectedLearners.has(uid) ? 'selected' : ''}`;
+        card.setAttribute('data-userid', uid);
+        const initial = (user.username || user.email)[0].toUpperCase();
+        let teacherOptions = '<option value="">No Teacher</option>';
+        Object.entries(allTeachers).forEach(([tid, teacher]) => {
+          const selected = user.teacherId === tid ? 'selected' : '';
+          teacherOptions += `<option value="${tid}" ${selected}>${teacher.username || teacher.email}</option>`;
+        });
+        card.innerHTML = `
+          <input type="checkbox" class="user-checkbox" ${selectedLearners.has(uid) ? 'checked' : ''} onchange="toggleSelection('${uid}', this.checked)">
+          <div class="user-avatar-small">${initial}</div>
+          <div class="user-name">${user.username || user.email}</div>
+          <div class="user-meta">Role: ${user.role || 'learner'} ${user.teacherId ? `• Assigned to: ${allTeachers[user.teacherId]?.username || allTeachers[user.teacherId]?.email}` : ''}</div>
+          <form class="assign-form" data-userid="${uid}">
+            <select id="teacher-select-${uid}">${teacherOptions}</select>
+            <button type="submit" class="assign-btn">Assign</button>
+          </form>
+        `;
+        const form = card.querySelector('form');
+        const assignBtn = form.querySelector('.assign-btn');
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const select = form.querySelector('select');
+          if (!select.value) {
+            showDialog('Please select a teacher.', 'error');
+            return;
+          }
+          assignBtn.disabled = true;
+          showLoader();
+          const teacherId = select.value;
+          const updates = { teacherId };
+          if (teacherId) {
+            const teacher = allTeachers[teacherId];
+            updates.teacherName = teacher.username || teacher.email;
+            await update(ref(db, `users/${teacherId}`), { assignedLearners: (teacher.assignedLearners || 0) + 1 });
+          } else if (user.teacherId) {
+            const prevTeacher = allTeachers[user.teacherId];
+            await update(ref(db, `users/${user.teacherId}`), { assignedLearners: Math.max((prevTeacher.assignedLearners || 0) - 1, 0) });
+          }
+          await update(ref(db, `users/${uid}`), updates);
+          hideLoader();
+          showDialog('Teacher assigned successfully!', 'success');
+          setTimeout(() => { assignBtn.disabled = false; }, 2000);
+        });
+        card.addEventListener('click', (e) => {
+          if (!e.target.closest('form') && !e.target.classList.contains('user-checkbox')) {
+            const checkbox = card.querySelector('.user-checkbox');
+            checkbox.checked = !checkbox.checked;
+            toggleSelection(uid, checkbox.checked);
+          }
+        });
+        grid.appendChild(card);
+      });
+      if (visibleLearners.length === 0) {
+        const message = searchQuery ? `<p class="text-center" style="color: var(--text-secondary);">No learners match "${searchQuery}".</p>` : '<p class="text-center text-var(--text-secondary)">No learners to assign yet.</p>';
+        grid.innerHTML = message;
       }
       updateBulkControls();
     }
 
-    // NEW: Handle individual selection toggle
+    // Handle individual selection toggle
     window.toggleSelection = (uid, isSelected) => {
       if (isSelected) {
         selectedLearners.add(uid);
@@ -1039,7 +1098,7 @@
       updateBulkControls();
     };
 
-    // NEW: Handle bulk assign form
+    // Handle bulk assign form
     document.getElementById('bulk-assign-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const select = document.getElementById('bulk-teacher-select');
@@ -1058,20 +1117,49 @@
       const updates = { teacherId, teacherName };
       const batchPromises = Array.from(selectedLearners).map(async (uid) => {
         const learner = allUsers[uid];
-        // Decrement prev teacher if needed
         if (learner.teacherId && learner.teacherId !== teacherId) {
           const prevTeacher = allTeachers[learner.teacherId];
           await update(ref(db, `users/${learner.teacherId}`), { assignedLearners: Math.max((prevTeacher.assignedLearners || 0) - 1, 0) });
         }
         await update(ref(db, `users/${uid}`), updates);
       });
-      // Increment new teacher
       await Promise.all(batchPromises);
       await update(ref(db, `users/${teacherId}`), { assignedLearners: (teacher.assignedLearners || 0) + selectedLearners.size });
       hideLoader();
       showDialog(`${selectedLearners.size} learners assigned to ${teacherName}!`, 'success');
       selectedLearners.clear();
-      populateUsers();  // Refresh UI
+      populateUsers();
+    });
+
+    // NEW: Handle add learner form
+    document.getElementById('add-learner-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      showLoader();
+      const username = document.getElementById('new-learner-username').value.trim();
+      const email = document.getElementById('new-learner-email').value.trim();
+      const tempPassword = document.getElementById('new-learner-password').value.trim();
+      if (!username || !email || !tempPassword) {
+        hideLoader();
+        showDialog('Please fill all fields.', 'error');
+        return;
+      }
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, tempPassword);
+        const newUser = userCredential.user;
+        await set(ref(db, `users/${newUser.uid}`), {
+          username,
+          email: newUser.email,
+          role: 'learner',
+          teacherId: null,
+          teacherName: null
+        });
+        hideLoader();
+        showDialog(`Learner onboarded successfully! UID: ${newUser.uid}\nEmail: ${email}\nTemp Password: ${tempPassword}\nShare these with the learner to sign in.`, 'success');
+        e.target.reset();
+      } catch (error) {
+        hideLoader();
+        showDialog(`Error onboarding learner: ${error.message}`, 'error');
+      }
     });
 
     // Populate teachers grid
