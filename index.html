@@ -479,6 +479,63 @@
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-group label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--text-primary);
+    }
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--card-bg);
+      color: var(--text-primary);
+      font-size: 16px;
+      transition: border-color 0.3s ease;
+    }
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .form-group textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+    .save-btn {
+      background: var(--gradient);
+      color: white;
+      border: none;
+      padding: 12px 32px;
+      border-radius: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.3s ease;
+      width: 100%;
+    }
+    .save-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+    .profile-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 40px;
+      max-width: 600px;
+      margin: 0 auto;
+      box-shadow: var(--shadow-sm);
+    }
     @media (max-width: 1024px) {
       .sidebar {
         transform: translateX(-100%);
@@ -566,6 +623,23 @@
 
     <section id="teachers" class="courses-section">
       <h2 class="section-title">Manage Teachers</h2>
+      <div class="profile-card" style="margin-bottom: 24px;">
+        <form id="add-teacher-form">
+          <div class="form-group">
+            <label for="new-teacher-username">Username</label>
+            <input type="text" id="new-teacher-username" placeholder="Enter username" required>
+          </div>
+          <div class="form-group">
+            <label for="new-teacher-email">Email</label>
+            <input type="email" id="new-teacher-email" placeholder="Enter email" required>
+          </div>
+          <div class="form-group">
+            <label for="new-teacher-password">Temporary Password</label>
+            <input type="password" id="new-teacher-password" placeholder="Enter or generate temp password" required>
+          </div>
+          <button type="submit" class="save-btn">Onboard New Teacher</button>
+        </form>
+      </div>
       <div class="users-grid" id="teachers-grid">
         <!-- Teachers will be populated here -->
       </div>
@@ -625,7 +699,7 @@
 
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
-    import { getAuth, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+    import { getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
     import { getDatabase, ref, onValue, set, update, push } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
 
     const firebaseConfig = {
@@ -772,8 +846,9 @@
 
       Object.entries(allUsers).forEach(([uid, user]) => {
         totalUsers++;
-        if (user.role === 'learner') totalLearners++;
-        if (user.role === 'teacher') totalTeachers++;
+        const role = user.role || 'learner';
+        if (role === 'learner') totalLearners++;
+        if (role === 'teacher') totalTeachers++;
       });
 
       document.getElementById('total-users').textContent = totalUsers;
@@ -787,7 +862,8 @@
       const grid = document.getElementById('users-grid');
       grid.innerHTML = '';
       Object.entries(allUsers).forEach(([uid, user]) => {
-        if (user.role !== 'admin') {  // Exclude admins from list
+        const role = user.role || 'learner';
+        if (role !== 'admin') {  // Exclude admins from list
           const card = document.createElement('div');
           card.className = 'user-card';
           const initial = (user.username || user.email)[0].toUpperCase();
@@ -799,7 +875,7 @@
           card.innerHTML = `
             <div class="user-avatar-small">${initial}</div>
             <div class="user-name">${user.username || user.email}</div>
-            <div class="user-meta">Role: ${user.role || 'learner'}</div>
+            <div class="user-meta">Role: ${role}</div>
             <form class="assign-form" data-userid="${uid}">
               <select id="teacher-select-${uid}">${teacherOptions}</select>
               <button type="submit" class="assign-btn">Assign</button>
@@ -832,10 +908,13 @@
         const card = document.createElement('div');
         card.className = 'user-card';
         const initial = (teacher.username || teacher.email)[0].toUpperCase();
+        let assignedCount = teacher.assignedLearners || 0;
+        // Recalculate assigned learners
+        assignedCount = Object.values(allUsers).filter(u => u.teacherId === uid).length;
         card.innerHTML = `
           <div class="user-avatar-small">${initial}</div>
           <div class="user-name">${teacher.username || teacher.email}</div>
-          <div class="user-meta">Role: teacher • Assigned Learners: ${teacher.assignedLearners || 0}</div>
+          <div class="user-meta">Role: teacher • Assigned Learners: ${assignedCount}</div>
         `;
         grid.appendChild(card);
       });
@@ -848,9 +927,12 @@
       Object.entries(allCourses).forEach(([courseId, course]) => {
         const card = document.createElement('div');
         card.className = 'user-card';
+        let enrolledCount = course.enrolled || 0;
+        // Recalculate enrollments if needed
+        enrolledCount = Object.values(allUsers).filter(u => u.enrolledCourses && Object.keys(u.enrolledCourses).includes(courseId)).length;
         card.innerHTML = `
           <div class="user-name">${course.title}</div>
-          <div class="user-meta">ID: ${courseId} • Enrolled: ${course.enrolled || 0}</div>
+          <div class="user-meta">ID: ${courseId} • Enrolled: ${enrolledCount}</div>
         `;
         grid.appendChild(card);
       });
@@ -888,6 +970,36 @@
       showDialog('Settings saved successfully!', 'success');
     });
 
+    // Handle add teacher form
+    document.getElementById('add-teacher-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      showLoader();
+      const username = document.getElementById('new-teacher-username').value.trim();
+      const email = document.getElementById('new-teacher-email').value.trim();
+      const tempPassword = document.getElementById('new-teacher-password').value.trim();
+      if (!username || !email || !tempPassword) {
+        hideLoader();
+        showDialog('Please fill all fields.', 'error');
+        return;
+      }
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, tempPassword);
+        const newUser = userCredential.user;
+        await set(ref(db, `users/${newUser.uid}`), {
+          username,
+          email: newUser.email,
+          role: 'teacher',
+          assignedLearners: 0
+        });
+        hideLoader();
+        showDialog(`Teacher onboarded successfully! UID: ${newUser.uid}\nEmail: ${email}\nTemp Password: ${tempPassword}\nShare these with the teacher to sign in.`, 'success');
+        e.target.reset();
+      } catch (error) {
+        hideLoader();
+        showDialog(`Error onboarding teacher: ${error.message}`, 'error');
+      }
+    });
+
     // Auth state listener
     onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -903,14 +1015,9 @@
           // Separate teachers
           allTeachers = {};
           Object.entries(allUsers).forEach(([uid, user]) => {
-            if (user.role === 'teacher') {
+            const role = user.role || 'learner';
+            if (role === 'teacher') {
               allTeachers[uid] = user;
-              // Count assigned learners
-              let count = 0;
-              Object.values(allUsers).forEach(u => {
-                if (u.teacherId === uid) count++;
-              });
-              allTeachers[uid].assignedLearners = count;
             }
           });
           populateAdminStats();
