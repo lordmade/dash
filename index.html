@@ -615,9 +615,10 @@
     </section>
 
     <section id="users" class="courses-section">
-      <h2 class="section-title">Manage Users</h2>
+      <h2 class="section-title">Unassigned Learners</h2>
+      <p style="color: var(--text-secondary); margin-bottom: 24px;">Select a teacher to assign to these learners.</p>
       <div class="users-grid" id="users-grid">
-        <!-- Users will be populated here -->
+        <!-- Unassigned learners will be populated here -->
       </div>
     </section>
 
@@ -857,46 +858,55 @@
       document.getElementById('total-courses').textContent = totalCourses;
     }
 
-    // Populate users grid
+    // Populate unassigned learners grid
     function populateUsers() {
       const grid = document.getElementById('users-grid');
       grid.innerHTML = '';
-      Object.entries(allUsers).forEach(([uid, user]) => {
+      const unassignedLearners = Object.entries(allUsers).filter(([uid, user]) => {
         const role = user.role || 'learner';
-        if (role !== 'admin') {  // Exclude admins from list
-          const card = document.createElement('div');
-          card.className = 'user-card';
-          const initial = (user.username || user.email)[0].toUpperCase();
-          let teacherOptions = '<option value="">No Teacher</option>';
-          Object.entries(allTeachers).forEach(([tid, teacher]) => {
-            const selected = user.teacherId === tid ? 'selected' : '';
-            teacherOptions += `<option value="${tid}" ${selected}>${teacher.username || teacher.email}</option>`;
-          });
-          card.innerHTML = `
-            <div class="user-avatar-small">${initial}</div>
-            <div class="user-name">${user.username || user.email}</div>
-            <div class="user-meta">Role: ${role}</div>
-            <form class="assign-form" data-userid="${uid}">
-              <select id="teacher-select-${uid}">${teacherOptions}</select>
-              <button type="submit" class="assign-btn">Assign</button>
-            </form>
-          `;
-          const form = card.querySelector('form');
-          form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            showLoader();
-            const teacherId = form.querySelector('select').value;
-            const updates = { teacherId };
-            if (teacherId) {
-              const teacher = allTeachers[teacherId];
-              updates.teacherName = teacher.username || teacher.email;
-            }
-            await update(ref(db, `users/${uid}`), updates);
-            hideLoader();
-            showDialog('Teacher assigned successfully!', 'success');
-          });
-          grid.appendChild(card);
-        }
+        return role === 'learner' && !user.teacherId;
+      });
+      if (unassignedLearners.length === 0) {
+        grid.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">All learners are assigned.</p>';
+        return;
+      }
+      unassignedLearners.forEach(([uid, user]) => {
+        const card = document.createElement('div');
+        card.className = 'user-card';
+        const initial = (user.username || user.email)[0].toUpperCase();
+        let teacherOptions = '<option value="">Select Teacher</option>';
+        Object.entries(allTeachers).forEach(([tid, teacher]) => {
+          teacherOptions += `<option value="${tid}">${teacher.username || teacher.email}</option>`;
+        });
+        card.innerHTML = `
+          <div class="user-avatar-small">${initial}</div>
+          <div class="user-name">${user.username || user.email}</div>
+          <div class="user-meta">Unassigned Learner</div>
+          <form class="assign-form" data-userid="${uid}">
+            <select id="teacher-select-${uid}">${teacherOptions}</select>
+            <button type="submit" class="assign-btn">Assign</button>
+          </form>
+        `;
+        const form = card.querySelector('form');
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const teacherId = form.querySelector('select').value;
+          if (!teacherId) {
+            showDialog('Please select a teacher.', 'error');
+            return;
+          }
+          showLoader();
+          const teacher = allTeachers[teacherId];
+          const updates = { 
+            teacherId,
+            teacherName: teacher.username || teacher.email
+          };
+          await update(ref(db, `users/${uid}`), updates);
+          hideLoader();
+          showDialog('Teacher assigned successfully!', 'success');
+          populateUsers(); // Refresh list
+        });
+        grid.appendChild(card);
       });
     }
 
@@ -908,9 +918,7 @@
         const card = document.createElement('div');
         card.className = 'user-card';
         const initial = (teacher.username || teacher.email)[0].toUpperCase();
-        let assignedCount = teacher.assignedLearners || 0;
-        // Recalculate assigned learners
-        assignedCount = Object.values(allUsers).filter(u => u.teacherId === uid).length;
+        let assignedCount = Object.values(allUsers).filter(u => u.teacherId === uid).length;
         card.innerHTML = `
           <div class="user-avatar-small">${initial}</div>
           <div class="user-name">${teacher.username || teacher.email}</div>
@@ -927,9 +935,7 @@
       Object.entries(allCourses).forEach(([courseId, course]) => {
         const card = document.createElement('div');
         card.className = 'user-card';
-        let enrolledCount = course.enrolled || 0;
-        // Recalculate enrollments if needed
-        enrolledCount = Object.values(allUsers).filter(u => u.enrolledCourses && Object.keys(u.enrolledCourses).includes(courseId)).length;
+        let enrolledCount = Object.values(allUsers).filter(u => u.enrolledCourses && Object.keys(u.enrolledCourses).includes(courseId)).length;
         card.innerHTML = `
           <div class="user-name">${course.title}</div>
           <div class="user-meta">ID: ${courseId} • Enrolled: ${enrolledCount}</div>
