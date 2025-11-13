@@ -878,11 +878,23 @@
     <div class="modal-content">
       <h3>Add Parent</h3>
       <input type="text" id="parent-name" class="input-field" placeholder="Parent Name">
-      <input type="text" id="parent-child" class="input-field" placeholder="Child Name">
+      <select id="parent-child-select" class="input-field">
+        <option value="">Select Child</option>
+      </select>
       <input type="email" id="parent-email" class="input-field" placeholder="Email">
       <div style="display: flex; gap: 12px; justify-content: flex-end;">
         <button class="btn btn-secondary close-parent-modal">Cancel</button>
         <button class="btn save-parent-btn">Save</button>
+      </div>
+    </div>
+  </div>
+  <!-- Performance Modal -->
+  <div id="performance-modal" class="modal">
+    <div class="modal-content">
+      <h3>Child Performance</h3>
+      <div id="performance-list" style="margin-bottom: 16px;"></div>
+      <div style="display: flex; gap: 12px; justify-content: flex-end;">
+        <button class="btn btn-secondary close-performance-modal">Close</button>
       </div>
     </div>
   </div>
@@ -910,7 +922,7 @@
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
     import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
-    import { getDatabase, ref, onValue, set, push, update, remove } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
+    import { getDatabase, ref, onValue, set, push, update, remove, get } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
     const firebaseConfig = {
       apiKey: "AIzaSyBOyZ3As4GTuNvjemvPF_SpsC6m6vqtNhc",
       authDomain: "fire-b-a8878.firebaseapp.com",
@@ -929,6 +941,7 @@
     let selectedGrade = null;
     let currentOpenSection = null;
     let listeners = {};
+    let studentsData = {};
     let confirmResolve;
     function showLoader() {
       document.getElementById('loader-overlay').classList.add('active');
@@ -1018,6 +1031,7 @@
       document.querySelector('.close-reminder-modal').addEventListener('click', () => closeModal('add-reminder'));
       document.querySelector('.save-parent-btn').addEventListener('click', saveParent);
       document.querySelector('.close-parent-modal').addEventListener('click', () => closeModal('add-parent'));
+      document.querySelector('.close-performance-modal').addEventListener('click', () => closeModal('performance'));
       document.getElementById('alert-ok-btn').addEventListener('click', () => {
         document.getElementById('alert-modal').classList.remove('active');
       });
@@ -1067,7 +1081,7 @@
         const tbody = document.getElementById('students-tbody');
         if (!tbody) return;
         tbody.innerHTML = '';
-        let studentsData = {};
+        studentsData = {};
         if (snapshot.exists()) {
           studentsData = snapshot.val();
         }
@@ -1093,6 +1107,16 @@
               option.value = id;
               option.textContent = student.name;
               select.appendChild(option);
+            });
+          }
+          const parentSelect = document.getElementById('parent-child-select');
+          if (parentSelect) {
+            parentSelect.innerHTML = '<option value="">Select Child</option>';
+            Object.entries(studentsData).forEach(([id, student]) => {
+              const option = document.createElement('option');
+              option.value = id;
+              option.textContent = student.name;
+              parentSelect.appendChild(option);
             });
           }
           tbody.querySelectorAll('.edit-student-btn').forEach(btn => {
@@ -1198,18 +1222,23 @@
           Object.entries(parentsData).forEach(([id, parent]) => {
             const item = document.createElement('div');
             item.className = 'parent-item';
+            const childName = studentsData[parent.studentId]?.name || 'Unknown Student';
             item.innerHTML = `
               <div>
-                <strong>${parent.name}</strong> - Parent of ${parent.childName}<br>
+                <strong>${parent.name}</strong> - Parent of ${childName}<br>
                 <small>${parent.email}</small>
               </div>
-              <button class="btn btn-secondary send-parent-message-btn" data-id="${id}" data-name="${parent.name}">Message</button>
+              <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                <button class="btn btn-secondary send-parent-message-btn" data-id="${id}" data-name="${parent.name}">Message</button>
+                <button class="btn btn-secondary view-performance-btn" data-student-id="${parent.studentId}">View Performance</button>
+              </div>
             `;
             item.querySelector('.send-parent-message-btn').addEventListener('click', () => {
-              const id = item.querySelector('.send-parent-message-btn').dataset.id;
+              const parentId = item.querySelector('.send-parent-message-btn').dataset.id;
               const name = item.querySelector('.send-parent-message-btn').dataset.name;
-              sendParentMessage(id, name);
+              sendParentMessage(parentId, name);
             });
+            item.querySelector('.view-performance-btn').addEventListener('click', () => openPerformanceModal(parent.studentId));
             list.appendChild(item);
           });
         } else {
@@ -1243,6 +1272,10 @@
         document.getElementById('student-name').value = '';
         document.getElementById('student-email').value = '';
         document.getElementById('student-class').value = '';
+      } else if (type === 'add-parent') {
+        document.getElementById('parent-child-select').value = '';
+        document.getElementById('parent-name').value = '';
+        document.getElementById('parent-email').value = '';
       }
     }
     function closeModal(type) {
@@ -1547,10 +1580,10 @@
       showLoader();
       try {
         const name = document.getElementById('parent-name').value.trim();
-        const childName = document.getElementById('parent-child').value.trim();
+        const studentId = document.getElementById('parent-child-select').value;
         const email = document.getElementById('parent-email').value.trim();
-        if (!name || !childName || !email) return showAlert('Please fill all fields.');
-        await push(ref(db, 'parents'), { name, childName: childName, email, timestamp: Date.now() });
+        if (!name || !studentId || !email) return showAlert('Please fill all fields and select a child.');
+        await push(ref(db, 'parents'), { name, studentId, email, timestamp: Date.now() });
         closeModal('add-parent');
         showAlert('Parent added!');
       } catch (error) {
@@ -1570,6 +1603,36 @@
         } finally {
           hideLoader();
         }
+      }
+    }
+    async function openPerformanceModal(studentId) {
+      showLoader();
+      try {
+        const snapshot = await get(ref(db, `markers/${studentId}`));
+        const list = document.getElementById('performance-list');
+        list.innerHTML = '';
+        if (snapshot.exists()) {
+          Object.entries(snapshot.val()).forEach(([assignId, marker]) => {
+            const item = document.createElement('div');
+            item.style.padding = '8px';
+            item.style.borderBottom = '1px solid var(--border)';
+            item.innerHTML = `
+              <strong>Assignment ID: ${assignId}</strong><br>
+              Grade: ${marker.grade}<br>
+              Feedback: ${marker.feedback}<br>
+              Date: ${new Date(marker.timestamp).toLocaleDateString()}
+            `;
+            list.appendChild(item);
+          });
+        } else {
+          list.innerHTML = '<p>No performance data yet.</p>';
+        }
+      } catch (error) {
+        console.error('Error loading performance:', error);
+        document.getElementById('performance-list').innerHTML = '<p>Error loading data.</p>';
+      } finally {
+        hideLoader();
+        document.getElementById('performance-modal').classList.add('active');
       }
     }
     function closeSidebar() {
