@@ -1006,6 +1006,9 @@
       document.querySelector('.send-announcement-btn').addEventListener('click', sendAnnouncement);
       document.querySelector('.add-reminder-btn').addEventListener('click', () => openModal('add-reminder'));
       document.querySelector('.send-chatbot-btn').addEventListener('click', sendChatbotMessage);
+      document.getElementById('chatbot-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendChatbotMessage();
+      });
       document.getElementById('student-select').addEventListener('change', loadAssignmentsForStudent);
       document.querySelector('.save-grade-btn').addEventListener('click', saveGradeAndFeedback);
       document.querySelector('.add-parent-btn').addEventListener('click', () => openModal('add-parent'));
@@ -1015,9 +1018,6 @@
       document.querySelector('.close-reminder-modal').addEventListener('click', () => closeModal('add-reminder'));
       document.querySelector('.save-parent-btn').addEventListener('click', saveParent);
       document.querySelector('.close-parent-modal').addEventListener('click', () => closeModal('add-parent'));
-      document.getElementById('chatbot-input').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') sendChatbotMessage();
-      });
       document.getElementById('alert-ok-btn').addEventListener('click', () => {
         document.getElementById('alert-modal').classList.remove('active');
       });
@@ -1438,26 +1438,39 @@
         }
       }
     }
-    function sendChatbotMessage() {
+    async function sendChatbotMessage() {
       const input = document.getElementById('chatbot-input');
       const message = input.value.trim();
       if (!message) return;
       const messages = document.getElementById('chatbot-messages');
       messages.innerHTML += `<div class="chat-message user">${message}</div>`;
       input.value = '';
-      setTimeout(() => {
-        let botMsg = "I'm here to help with TMS queries.";
-        if (message.toLowerCase().includes('student')) {
-          botMsg = "For student management, use the Students tab to add, edit, or delete records.";
-        } else if (message.toLowerCase().includes('lesson')) {
-          botMsg = "Lesson plans can be generated using AI in the Lesson Plans tab.";
-        } else if (message.toLowerCase().includes('help')) {
-          botMsg = "Available sections: Dashboard, Students, Lesson Plans, Communication, Reminders, Chatbot, Marker, Parents.";
+      messages.scrollTop = messages.scrollHeight;
+      showLoader();
+      try {
+        if (GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY_HERE') {
+          throw new Error('Please set your Gemini API key in the script.');
         }
+        const prompt = `You are a helpful AI assistant for the Teachers Management System (TMS) Dashboard. Help teachers with queries about managing students, generating lesson plans, communication, reminders, grading/marker, parents portal, and general usage. Keep responses concise, professional, and actionable. If the query is unrelated, politely redirect to TMS features. User message: ${message}`;
+        const response = await fetch(GEMINI_API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }]
+          })
+        });
+        if (!response.ok) throw new Error('Gemini API request failed');
+        const data = await response.json();
+        const botMsg = data.candidates[0].content.parts[0].text.replace(/\*\*(.*?)\*\*/g, '$1').trim(); // Basic markdown cleanup for plain text
         messages.innerHTML += `<div class="chat-message bot">${botMsg}</div>`;
         messages.scrollTop = messages.scrollHeight;
-      }, 1000);
-      messages.scrollTop = messages.scrollHeight;
+      } catch (error) {
+        console.error('Error generating chatbot response:', error);
+        messages.innerHTML += `<div class="chat-message bot">Sorry, I'm having trouble responding right now. Please try again or check your connection.</div>`;
+        messages.scrollTop = messages.scrollHeight;
+      } finally {
+        hideLoader();
+      }
     }
     let assignmentsListener = null;
     async function loadAssignmentsForStudent() {
