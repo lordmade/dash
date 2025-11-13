@@ -653,6 +653,7 @@
       <li><a href="#" class="sidebar-link" data-section="chatbot"><span class="material-icons">smart_toy</span>Chatbot</a></li>
       <li><a href="#" class="sidebar-link" data-section="marker"><span class="material-icons">edit</span>Marker</a></li>
       <li><a href="#" class="sidebar-link" data-section="parents"><span class="material-icons">family_restroom</span>Parents</a></li>
+      <li><a href="#" class="sidebar-link" data-section="parent-dashboard"><span class="material-icons">dashboard</span>Parent Dashboard</a></li>
     </ul>
   </nav>
   <!-- Top Tabs Container (Desktop Only) -->
@@ -666,6 +667,7 @@
       <li class="tab"><a href="#" class="tab-link" data-section="chatbot"><span class="material-icons" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">smart_toy</span>Chatbot</a></li>
       <li class="tab"><a href="#" class="tab-link" data-section="marker"><span class="material-icons" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">edit</span>Marker</a></li>
       <li class="tab"><a href="#" class="tab-link" data-section="parents"><span class="material-icons" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">family_restroom</span>Parents</a></li>
+      <li class="tab"><a href="#" class="tab-link" data-section="parent-dashboard"><span class="material-icons" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">dashboard</span>Parent Dashboard</a></li>
     </ul>
   </div>
   <main class="main-content">
@@ -826,6 +828,19 @@
       </div>
       <div class="parents-list" id="parents-list">
         <!-- Parents loaded here -->
+      </div>
+    </div>
+    <!-- Parent Dashboard Section -->
+    <div id="parent-dashboard-section" class="hidden">
+      <div class="section-header">
+        <h2 class="section-title">
+          <span class="material-icons">school</span>
+          Parent Dashboard
+        </h2>
+        <button class="btn btn-secondary" id="switch-back-btn">Switch Back to Teacher View</button>
+      </div>
+      <div class="notification-list" id="parent-performance-list">
+        <!-- Performance loaded here -->
       </div>
     </div>
   </main>
@@ -1068,6 +1083,11 @@
       document.getElementById('confirm-no-btn').addEventListener('click', () => {
         document.getElementById('confirm-modal').classList.remove('active');
         if (confirmResolve) confirmResolve(false);
+      });
+      document.getElementById('switch-back-btn').addEventListener('click', () => {
+        isParent = false;
+        showTeacherSections();
+        openSection('dashboard');
       });
     }
     function filterTable(tbodyId, query, searchableFields) {
@@ -1331,6 +1351,31 @@
         document.getElementById('dashboard-title').classList.remove('hidden');
         document.getElementById('dashboard-content').classList.remove('hidden');
         currentOpenSection = null;
+      } else if (section === 'parent-dashboard') {
+        document.getElementById('parent-dashboard-section').classList.remove('hidden');
+        const list = document.getElementById('parent-performance-list');
+        list.innerHTML = `
+          <div class="notification-item">
+            <div>
+              <strong>Math Assignment 1</strong><br>
+              <small>Grade: A | Feedback: Excellent understanding of algebra. | Date: Nov 10, 2025</small>
+            </div>
+          </div>
+          <div class="notification-item">
+            <div>
+              <strong>Science Project</strong><br>
+              <small>Grade: B | Feedback: Good effort, improve on presentation. | Date: Nov 5, 2025</small>
+            </div>
+          </div>
+          <div class="notification-item">
+            <div>
+              <strong>English Essay</strong><br>
+              <small>Grade: A- | Feedback: Well-written, great vocabulary. | Date: Nov 1, 2025</small>
+            </div>
+          </div>
+        `;
+        hideTeacherSections();
+        currentOpenSection = section;
       } else {
         const el = document.getElementById(`${section}-section`);
         if (el) el.classList.remove('hidden');
