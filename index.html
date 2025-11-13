@@ -816,7 +816,7 @@
     <!-- Parents Section -->
     <div id="parents-section" class="hidden">
       <div class="section-header">
-        <h2 class="section-title">
+        <h2 id="parents-section-title" class="section-title">
           <span class="material-icons">family_restroom</span>
           Parents Portal
         </h2>
@@ -888,16 +888,6 @@
       </div>
     </div>
   </div>
-  <!-- Performance Modal -->
-  <div id="performance-modal" class="modal">
-    <div class="modal-content">
-      <h3>Child Performance</h3>
-      <div id="performance-list" style="margin-bottom: 16px;"></div>
-      <div style="display: flex; gap: 12px; justify-content: flex-end;">
-        <button class="btn btn-secondary close-performance-modal">Close</button>
-      </div>
-    </div>
-  </div>
   <!-- Custom Alert Modal -->
   <div id="alert-modal" class="modal">
     <div class="modal-content">
@@ -942,6 +932,7 @@
     let currentOpenSection = null;
     let listeners = {};
     let studentsData = {};
+    let isParent = false;
     let confirmResolve;
     function showLoader() {
       document.getElementById('loader-overlay').classList.add('active');
@@ -965,6 +956,42 @@
     function unsubscribeAll() {
       Object.values(listeners).forEach(unsub => unsub());
       listeners = {};
+    }
+    function hideTeacherSections() {
+      const teacherSections = ['students', 'lesson-plans', 'marker'];
+      teacherSections.forEach(sec => {
+        const sidebarLink = document.querySelector(`.sidebar-link[data-section="${sec}"]`);
+        const tabLink = document.querySelector(`.tab-link[data-section="${sec}"]`);
+        if (sidebarLink) sidebarLink.style.display = 'none';
+        if (tabLink) tabLink.parentElement.style.display = 'none';
+      });
+    }
+    function showTeacherSections() {
+      const teacherSections = ['students', 'lesson-plans', 'marker'];
+      teacherSections.forEach(sec => {
+        const sidebarLink = document.querySelector(`.sidebar-link[data-section="${sec}"]`);
+        const tabLink = document.querySelector(`.tab-link[data-section="${sec}"]`);
+        if (sidebarLink) sidebarLink.style.display = '';
+        if (tabLink) tabLink.parentElement.style.display = '';
+      });
+    }
+    function loadAndShowPerformance(data, container) {
+      container.innerHTML = '';
+      if (data) {
+        Object.entries(data).forEach(([assignId, marker]) => {
+          const item = document.createElement('div');
+          item.className = 'notification-item';
+          item.innerHTML = `
+            <div>
+              <strong>Assignment: ${assignId}</strong><br>
+              <small>Grade: ${marker.grade} | Feedback: ${marker.feedback} | Date: ${new Date(marker.timestamp).toLocaleDateString()}</small>
+            </div>
+          `;
+          container.appendChild(item);
+        });
+      } else {
+        container.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">No performance data yet.</p>';
+      }
     }
     function initializeFirebase() {
       app = initializeApp(firebaseConfig);
@@ -1031,7 +1058,6 @@
       document.querySelector('.close-reminder-modal').addEventListener('click', () => closeModal('add-reminder'));
       document.querySelector('.save-parent-btn').addEventListener('click', saveParent);
       document.querySelector('.close-parent-modal').addEventListener('click', () => closeModal('add-parent'));
-      document.querySelector('.close-performance-modal').addEventListener('click', () => closeModal('performance'));
       document.getElementById('alert-ok-btn').addEventListener('click', () => {
         document.getElementById('alert-modal').classList.remove('active');
       });
@@ -1218,30 +1244,78 @@
         if (snapshot.exists()) {
           parentsData = snapshot.val();
         }
-        if (Object.keys(parentsData).length > 0) {
-          Object.entries(parentsData).forEach(([id, parent]) => {
-            const item = document.createElement('div');
-            item.className = 'parent-item';
-            const childName = studentsData[parent.studentId]?.name || 'Unknown Student';
-            item.innerHTML = `
-              <div>
-                <strong>${parent.name}</strong> - Parent of ${childName}<br>
-                <small>${parent.email}</small>
-              </div>
-              <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                <button class="btn btn-secondary send-parent-message-btn" data-id="${id}" data-name="${parent.name}">Message</button>
-                <button class="btn btn-secondary view-performance-btn" data-student-id="${parent.studentId}">View Performance</button>
-              </div>
-            `;
-            item.querySelector('.send-parent-message-btn').addEventListener('click', () => {
-              const parentId = item.querySelector('.send-parent-message-btn').dataset.id;
-              const name = item.querySelector('.send-parent-message-btn').dataset.name;
-              sendParentMessage(parentId, name);
+        if (currentUser && Object.keys(parentsData).length > 0) {
+          const parentMatch = Object.values(parentsData).find(p => p.email === currentUser.email);
+          if (parentMatch) {
+            isParent = true;
+            const parentId = Object.entries(parentsData).find(([id, p]) => p.email === currentUser.email)[0];
+            const studentId = parentMatch.studentId;
+            const childName = studentsData[studentId]?.name || 'Unknown';
+            const sectionTitle = document.getElementById('parents-section-title');
+            if (sectionTitle) {
+              sectionTitle.innerHTML = `<span class="material-icons">school</span> My Child's Performance - ${childName}`;
+            }
+            const addBtn = document.querySelector('.add-parent-btn');
+            if (addBtn) addBtn.style.display = 'none';
+            hideTeacherSections();
+            if (listeners.myMarkers) listeners.myMarkers();
+            listeners.myMarkers = onValue(ref(db, `markers/${studentId}`), (snap) => {
+              loadAndShowPerformance(snap.val(), list);
             });
-            item.querySelector('.view-performance-btn').addEventListener('click', () => openPerformanceModal(parent.studentId));
-            list.appendChild(item);
-          });
+            if (currentOpenSection !== 'parents') {
+              openSection('parents');
+            }
+          } else {
+            isParent = false;
+            const sectionTitle = document.getElementById('parents-section-title');
+            if (sectionTitle) {
+              sectionTitle.innerHTML = `<span class="material-icons">family_restroom</span> Parents Portal`;
+            }
+            const addBtn = document.querySelector('.add-parent-btn');
+            if (addBtn) addBtn.style.display = 'block';
+            showTeacherSections();
+            if (listeners.myMarkers) {
+              listeners.myMarkers();
+              delete listeners.myMarkers;
+            }
+            Object.entries(parentsData).forEach(([id, parent]) => {
+              const item = document.createElement('div');
+              item.className = 'parent-item';
+              const childName = studentsData[parent.studentId]?.name || 'Unknown Student';
+              item.innerHTML = `
+                <div>
+                  <strong>${parent.name}</strong> - Parent of ${childName}<br>
+                  <small>${parent.email}</small>
+                </div>
+                <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                  <button class="btn btn-secondary send-parent-message-btn" data-id="${id}" data-name="${parent.name}">Message</button>
+                  <button class="btn btn-secondary view-performance-btn" data-student-id="${parent.studentId}">View Performance</button>
+                </div>
+              `;
+              item.querySelector('.send-parent-message-btn').addEventListener('click', () => {
+                const parentId = item.querySelector('.send-parent-message-btn').dataset.id;
+                const name = item.querySelector('.send-parent-message-btn').dataset.name;
+                sendParentMessage(parentId, name);
+              });
+              item.querySelector('.view-performance-btn').addEventListener('click', () => openPerformanceModal(parent.studentId));
+              list.appendChild(item);
+            });
+          }
         } else {
+          if (isParent) {
+            isParent = false;
+            const sectionTitle = document.getElementById('parents-section-title');
+            if (sectionTitle) {
+              sectionTitle.innerHTML = `<span class="material-icons">family_restroom</span> Parents Portal`;
+            }
+            const addBtn = document.querySelector('.add-parent-btn');
+            if (addBtn) addBtn.style.display = 'block';
+            showTeacherSections();
+            if (listeners.myMarkers) {
+              listeners.myMarkers();
+              delete listeners.myMarkers;
+            }
+          }
           list.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">No parents registered.</p>';
         }
       });
